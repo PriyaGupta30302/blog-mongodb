@@ -1,29 +1,30 @@
 import { ConnectDB } from "@/lib/config/db";
-const { NextResponse } = require("next/server");
-import {writeFile} from "fs/promises";
+import { Blog } from "@/lib/models/BlogModel";
 
-const LoadDB = async () => {
-    await ConnectDB();
-}
-
-LoadDB();
-
-export async function GET(request) {
-    
-    return NextResponse.json({ message: "Blog API Called" });
-}
+await ConnectDB();
 
 export async function POST(request) {
-    const formData = await request.formData();
-    const timestamp = Date.now();
-
-    const image = formData.get("image");
-    const imageBytes = await image.arrayBuffer();
-    const buffer = Buffer.from(imageBytes);
-    const path = `./public/${timestamp}_${image.name}`;
-    await writeFile(path, buffer);
-    const imgUrl = `/${timestamp}_${image.name}`;
-    console.log(imgUrl);
-    return NextResponse.json({ message: "Image uploaded", imgUrl });
+  try {
+    const body = await request.json();
+    const blogDoc = new Blog(body);
+    await blogDoc.save();
+    return new Response(JSON.stringify({ message: "Blog saved 2", blog: blogDoc }), {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
 }
 
+export async function GET(request) {
+  try {
+    const blogs = await Blog.find({});
+    return new Response(JSON.stringify(blogs), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
+}

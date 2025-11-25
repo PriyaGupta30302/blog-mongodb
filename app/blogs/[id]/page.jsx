@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import React, { useState, useEffect, use } from 'react'
 
-export default function Page({ params }) {
+export default function BlogDetailPage({ params }) {
 
   const resolvedParams = use(params);   // ✅ unwrap promise
   const { id } = resolvedParams;

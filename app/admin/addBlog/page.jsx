@@ -1,12 +1,13 @@
 'use client';
-import React, { useState } from "react";
+import React, { useState } from 'react';
+import TiptapEditor from '@/components/adminComponents/TiptapEditor';  // adjust path if needed
 
 const categories = ["Startup", "Technology", "Lifestyle"];
 
 const AddBlogpage = () => {
   const [formData, setFormData] = useState({
     title: "",
-    description: "",
+    description: "",     // ← keep description in formData for your original flow!
     author: "",
     category: categories[0],
   });
@@ -31,6 +32,11 @@ const AddBlogpage = () => {
     if (e.target.files && e.target.files[0]) setFile(e.target.files[0]);
   };
 
+  // Update description rich text directly into formData
+  const handleDescriptionChange = (html) => {
+    setFormData(prev => ({ ...prev, description: html }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const authorImgBase64 = authorImg ? await toBase64(authorImg) : "";
@@ -43,24 +49,20 @@ const AddBlogpage = () => {
       date: Date.now(),
     };
 
-    try {
-      const response = await fetch("/api/blog/createBlog", { // <-- updated endpoint
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(blogData),
-      });
+    const response = await fetch("/api/blog/createBlog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(blogData),
+    });
 
-      if (response.ok) {
-        alert("Blog added successfully");
-        setFormData({ title: "", description: "", author: "", category: categories[0] });
-        setAuthorImg(null);
-        setBlogImage(null);
-      } else {
-        const errorData = await response.json();
-        alert("Error: " + errorData.error);
-      }
-    } catch (err) {
-      alert("Failed to add blog: " + err.message);
+    if (response.ok) {
+      alert("Blog added successfully");
+      setFormData({ title: "", description: "", author: "", category: categories[0] });
+      setAuthorImg(null);
+      setBlogImage(null);
+    } else {
+      const errorData = await response.json();
+      alert("Error: " + errorData.error);
     }
   };
 
@@ -68,7 +70,7 @@ const AddBlogpage = () => {
     <div className="max-w-xl mx-auto p-6 bg-white rounded shadow-md">
       <h1 className="text-2xl font-semibold mb-6 text-center text-gray-800">Add Blog</h1>
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Title input */}
+        {/* Title */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Title</label>
           <input
@@ -77,22 +79,15 @@ const AddBlogpage = () => {
             value={formData.title}
             onChange={handleChange}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded"
           />
         </div>
-        {/* Description input */}
+        {/* Description (replace textarea with Tiptap) */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Description</label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            rows={4}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <TiptapEditor value={formData.description} setValue={handleDescriptionChange} />
         </div>
-        {/* Author input */}
+        {/* Author */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Author Name</label>
           <input
@@ -101,10 +96,10 @@ const AddBlogpage = () => {
             value={formData.author}
             onChange={handleChange}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded"
           />
         </div>
-        {/* Category select */}
+        {/* Category */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Category</label>
           <select
@@ -112,16 +107,14 @@ const AddBlogpage = () => {
             value={formData.category}
             onChange={handleChange}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            className="w-full px-3 py-2 border border-gray-300 rounded bg-white"
           >
             {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
+              <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
         </div>
-        {/* Author image input */}
+        {/* Author Image */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Author Image</label>
           <input
@@ -131,14 +124,10 @@ const AddBlogpage = () => {
             className="w-full text-gray-700"
           />
           {authorImg && (
-            <img
-              src={URL.createObjectURL(authorImg)}
-              alt="Author Preview"
-              className="mt-2 w-24 h-24 object-cover rounded"
-            />
+            <img src={URL.createObjectURL(authorImg)} alt="Author Preview" className="mt-2 w-24 h-24 object-cover rounded" />
           )}
         </div>
-        {/* Blog image input */}
+        {/* Blog Image */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Blog Image</label>
           <input
@@ -148,18 +137,11 @@ const AddBlogpage = () => {
             className="w-full text-gray-700"
           />
           {blogImage && (
-            <img
-              src={URL.createObjectURL(blogImage)}
-              alt="Blog Preview"
-              className="mt-2 w-24 h-24 object-cover rounded"
-            />
+            <img src={URL.createObjectURL(blogImage)} alt="Blog Preview" className="mt-2 w-24 h-24 object-cover rounded" />
           )}
         </div>
-        {/* Submit button */}
-        <button
-          type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded transition-colors"
-        >
+        {/* Submit */}
+        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded transition-colors">
           Add Blog
         </button>
       </form>

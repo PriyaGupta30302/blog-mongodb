@@ -22,8 +22,8 @@ const BlogList = () => {
   }, [menu]);
 
   return (
-    <div>
-      <div className='flex justify-center gap-6 my-10 cursor-pointer'>
+    <div className='max-w-[1340px] mx-auto'>
+      <div className='flex justify-center gap-3 my-10 cursor-pointer'>
         {categories.map((cat) => (
           <button
             key={cat}
@@ -34,7 +34,7 @@ const BlogList = () => {
           </button>
         ))}
       </div>
-      <div className='flex flex-wrap justify-around gap-1 gap-y-10 mb-16 xl:mx-24 cursor-pointer'>
+      <div className='flex flex-wrap justify-around gap-1 gap-y-10 mb-16 xl:mx-0 cursor-pointer'>
         {loading ? (
           <p>Loading...</p>
         ) : (

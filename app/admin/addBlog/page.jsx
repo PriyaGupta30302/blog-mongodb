@@ -1,18 +1,31 @@
+// app/(your-route)/AddBlogpage.jsx
 'use client';
-import React, { useState } from 'react';
-import TiptapEditor from '@/components/adminComponents/TiptapEditor';  // adjust path if needed
+import React, { useState, useRef } from 'react';
+import RichTextEditor from '@/components/adminComponents/RichTextEditor'; // adjust path if needed
+import '@/components/adminComponents/editor-styles.css'; // ensure editor styles loaded on this page
+import { assets } from '@/assets/blog-img/assets';
+// removed next/image usage in previews because we use URL.createObjectURL for local previews
 
 const categories = ["Startup", "Technology", "Lifestyle"];
 
 const AddBlogpage = () => {
   const [formData, setFormData] = useState({
     title: "",
-    description: "",     // ← keep description in formData for your original flow!
+    description: "", // HTML string from editor
     author: "",
     category: categories[0],
   });
+
+  // files and previews
   const [authorImg, setAuthorImg] = useState(null);
   const [blogImage, setBlogImage] = useState(null);
+
+  // used to remount the editor to clear it
+  const [editorKey, setEditorKey] = useState(1);
+
+  // refs to clear native file input values
+  const authorInputRef = useRef(null);
+  const blogInputRef = useRef(null);
 
   function toBase64(file) {
     return new Promise((resolve, reject) => {
@@ -32,42 +45,77 @@ const AddBlogpage = () => {
     if (e.target.files && e.target.files[0]) setFile(e.target.files[0]);
   };
 
-  // Update description rich text directly into formData
-  const handleDescriptionChange = (html) => {
+  // Editor change handler receives { json, html, readTime }
+  const handleEditorChange = ({ json, html, readTime }) => {
     setFormData(prev => ({ ...prev, description: html }));
+  };
+
+  const resetFormFields = () => {
+    // Clear text fields
+    setFormData({ title: "", description: "", author: "", category: categories[0] });
+
+    // Clear file state and native inputs
+    setAuthorImg(null);
+    setBlogImage(null);
+    if (authorInputRef.current) authorInputRef.current.value = '';
+    if (blogInputRef.current) blogInputRef.current.value = '';
+
+    // Remount editor to ensure internal state (character count, html, etc.) is cleared
+    setEditorKey((k) => k + 1);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const authorImgBase64 = authorImg ? await toBase64(authorImg) : "";
-    const blogImgBase64 = blogImage ? await toBase64(blogImage) : "";
 
-    const blogData = {
-      ...formData,
-      authorImg: authorImgBase64,
-      image: blogImgBase64,
-      date: Date.now(),
-    };
+    try {
+      const authorImgBase64 = authorImg ? await toBase64(authorImg) : "";
+      const blogImgBase64 = blogImage ? await toBase64(blogImage) : "";
 
-    const response = await fetch("/api/blog/createBlog", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(blogData),
-    });
+      const blogData = {
+        ...formData,
+        authorImg: authorImgBase64,
+        image: blogImgBase64,
+        date: Date.now(),
+      };
 
-    if (response.ok) {
-      alert("Blog added successfully");
-      setFormData({ title: "", description: "", author: "", category: categories[0] });
-      setAuthorImg(null);
-      setBlogImage(null);
-    } else {
-      const errorData = await response.json();
-      alert("Error: " + errorData.error);
+      const response = await fetch("/api/blog/createBlog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(blogData),
+      });
+
+      if (response.ok) {
+        alert("Blog added successfully");
+        // clear the form & editor
+        resetFormFields();
+      } else {
+        const errorData = await response.json();
+        alert("Error: " + (errorData.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error submitting blog: ' + (err.message || err));
     }
   };
 
+  // small helper to trigger click on file inputs from our preview placeholders
+  const triggerFileClick = (ref) => {
+    if (ref && ref.current) ref.current.click();
+  };
+
+  // Helper to get placeholder src (supports different import shapes)
+  const getPlaceholderSrc = (maybeAsset) => {
+    if (!maybeAsset) return '';
+    if (typeof maybeAsset === 'string') return maybeAsset;
+    if (maybeAsset.src) return maybeAsset.src;
+    return '';
+  };
+
+  // Attempt to get upload_area from assets (adjust key if your asset name differs)
+  const uploadPlaceholder = getPlaceholderSrc(assets?.upload_area || assets?.uploadArea || '');
+
   return (
-    <div className="max-w-xl mx-auto p-6 bg-white rounded shadow-md">
+    <div className="max-w-[1140px] mx-auto  p-6 my-10 bg-white rounded shadow-md">
       <h1 className="text-2xl font-semibold mb-6 text-center text-gray-800">Add Blog</h1>
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Title */}
@@ -82,11 +130,17 @@ const AddBlogpage = () => {
             className="w-full px-3 py-2 border border-gray-300 rounded"
           />
         </div>
-        {/* Description (replace textarea with Tiptap) */}
+
+        {/* Rich Text Editor */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Description</label>
-          <TiptapEditor value={formData.description} setValue={handleDescriptionChange} />
+          <RichTextEditor
+            key={editorKey} // remounts editor when key changes
+            initialContent={formData.description || null}
+            onContentChange={handleEditorChange}
+          />
         </div>
+
         {/* Author */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Author Name</label>
@@ -99,6 +153,7 @@ const AddBlogpage = () => {
             className="w-full px-3 py-2 border border-gray-300 rounded"
           />
         </div>
+
         {/* Category */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Category</label>
@@ -114,32 +169,101 @@ const AddBlogpage = () => {
             ))}
           </select>
         </div>
+
         {/* Author Image */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Author Image</label>
+
+          {/* Hidden input */}
           <input
+            ref={authorInputRef}
             type="file"
             accept="image/*"
             onChange={(e) => handleFileChange(e, setAuthorImg)}
-            className="w-full text-gray-700"
+            className="hidden"
           />
-          {authorImg && (
-            <img src={URL.createObjectURL(authorImg)} alt="Author Preview" className="mt-2 w-24 h-24 object-cover rounded" />
-          )}
+
+          {/* Preview or Upload Placeholder */}
+          <div
+            className="w-48 h-32 border border-gray-300 rounded-md overflow-hidden cursor-pointer"
+            onClick={() => triggerFileClick(authorInputRef)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') triggerFileClick(authorInputRef); }}
+          >
+            <img
+              src={authorImg ? URL.createObjectURL(authorImg) : (uploadPlaceholder || '')}
+              alt="Author Preview"
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          {/* Upload Button */}
+          <div className="mt-2 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => triggerFileClick(authorInputRef)}
+              className="inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
+            >
+              
+              Upload/change author image
+            </button>
+
+            {/* optionally show preview filename */}
+            {authorImg && (
+              <span className="text-sm text-gray-600 truncate max-w-[220px]">
+                {authorImg.name}
+              </span>
+            )}
+          </div>
         </div>
+
         {/* Blog Image */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Blog Image</label>
+
+          {/* Hidden input */}
           <input
+            ref={blogInputRef}
             type="file"
             accept="image/*"
             onChange={(e) => handleFileChange(e, setBlogImage)}
-            className="w-full text-gray-700"
+            className="hidden"
           />
-          {blogImage && (
-            <img src={URL.createObjectURL(blogImage)} alt="Blog Preview" className="mt-2 w-24 h-24 object-cover rounded" />
-          )}
+
+          {/* Preview or Upload Placeholder */}
+          <div
+            className="w-48 h-28 border border-gray-300 rounded-md overflow-hidden cursor-pointer"
+            onClick={() => triggerFileClick(blogInputRef)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') triggerFileClick(blogInputRef); }}
+          >
+            <img
+              src={blogImage ? URL.createObjectURL(blogImage) : (uploadPlaceholder || '')}
+              alt="Blog Preview"
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          <div className="mt-2 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => triggerFileClick(blogInputRef)}
+              className="inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
+            >
+              
+              Upload/change blog image
+            </button>
+
+            {blogImage && (
+              <span className="text-sm text-gray-600 truncate max-w-[220px]">
+                {blogImage.name}
+              </span>
+            )}
+          </div>
         </div>
+
         {/* Submit */}
         <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded transition-colors">
           Add Blog

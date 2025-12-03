@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import RichTextEditor from '@/components/adminComponents/RichTextEditor';
 import '@/components/adminComponents/editor-styles.css';
 import { assets } from '@/assets/blog-img/assets';
+import { MobileAdminNav } from '@/components/adminComponents/Sidebar';
 
 const categories = ["Startup", "Technology", "Lifestyle"];
 
@@ -193,7 +194,10 @@ const AddBlogpage = () => {
 
   // ---- UI ----
   return (
-    <div className="max-w-[1140px] mx-auto  p-6 my-10 bg-white rounded shadow-md">
+    <div className='md:px-10'>
+      
+    <div className="max-w-[1140px] mx-auto p-3  md:p-6 mb-10 md:my-10 bg-white rounded shadow-md ">
+      <MobileAdminNav/>
       <h1 className="text-2xl font-semibold mb-6 text-center text-gray-800">
         {isEditMode ? "Edit Blog" : "Add Blog"}
       </h1>
@@ -331,6 +335,7 @@ const AddBlogpage = () => {
           </button>
         </div>
       </form>
+    </div>
     </div>
   );
 };

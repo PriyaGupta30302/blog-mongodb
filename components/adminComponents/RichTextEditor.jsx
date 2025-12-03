@@ -533,41 +533,29 @@ const RichTextEditor = ({ onContentChange, initialContent = null }) => {
   const [readTime, setReadTime] = useState(1);
 
   const handleImageUpload = useCallback(async (file) => {
-    try {
-      setUploadProgress(0);
+  if (!file) return null;
+  setUploadProgress(0);
 
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
+  const formData = new FormData();
+  formData.append('file', file);
 
-      const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const fileName = `${Date.now()}_${cleanFileName}`;
+  const res = await fetch('/api/uploadImage', {
+    method: 'POST',
+    body: formData,
+  });
 
-      setUploadProgress(50);
+  if (!res.ok) {
+    const text = await res.text();
+    setUploadProgress(null);
+    throw new Error(text || 'Upload failed');
+  }
 
-      const { data, error } = await supabase.storage
-        .from('blog')
-        .upload(`editor-images/${fileName}`, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
+  const { publicUrl } = await res.json();
+  setUploadProgress(100);
+  setTimeout(() => setUploadProgress(null), 800);
+  return publicUrl; // this URL will be used to setImage(src)
+}, []);
 
-      if (error) throw error;
-
-      setUploadProgress(75);
-
-      const { data: urlData } = supabase.storage
-        .from('blog')
-        .getPublicUrl(data.path);
-
-      setUploadProgress(100);
-      setTimeout(() => setUploadProgress(null), 1000);
-
-      return urlData.publicUrl;
-    } catch (error) {
-      setUploadProgress(null);
-      throw error;
-    }
-  }, []);
 
   const editor = useEditor({
     extensions: [

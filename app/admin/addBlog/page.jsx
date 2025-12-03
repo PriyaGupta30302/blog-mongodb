@@ -1,41 +1,91 @@
-// app/(your-route)/AddBlogpage.jsx
 'use client';
-import React, { useState, useRef } from 'react';
-import RichTextEditor from '@/components/adminComponents/RichTextEditor'; // adjust path if needed
-import '@/components/adminComponents/editor-styles.css'; // ensure editor styles loaded on this page
+import React, { useState, useRef, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import RichTextEditor from '@/components/adminComponents/RichTextEditor';
+import '@/components/adminComponents/editor-styles.css';
 import { assets } from '@/assets/blog-img/assets';
-// removed next/image usage in previews because we use URL.createObjectURL for local previews
 
 const categories = ["Startup", "Technology", "Lifestyle"];
 
 const AddBlogpage = () => {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const editId = searchParams.get("id");
+  const isEditMode = Boolean(editId);
+
   const [formData, setFormData] = useState({
     title: "",
-    description: "", // HTML string from editor
+    description: "",
     author: "",
     category: categories[0],
   });
 
-  // files and previews
-  const [authorImg, setAuthorImg] = useState(null);
-  const [blogImage, setBlogImage] = useState(null);
-
-  // used to remount the editor to clear it
+  const [authorImg, setAuthorImg] = useState(null); // File | string | null
+  const [blogImage, setBlogImage] = useState(null); // File | string | null
   const [editorKey, setEditorKey] = useState(1);
-
-  // refs to clear native file input values
   const authorInputRef = useRef(null);
   const blogInputRef = useRef(null);
+  const [loading, setLoading] = useState(isEditMode);
 
-  function toBase64(file) {
-    return new Promise((resolve, reject) => {
+  // ---- helpers ----
+  const toBase64 = (file) =>
+    new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => resolve(reader.result);
-      reader.onerror = error => reject(error);
+      reader.onerror = (err) => reject(err);
     });
-  }
 
+  const triggerFileClick = (ref) => {
+    ref?.current?.click();
+  };
+
+  const getPlaceholderSrc = (maybeAsset) => {
+    if (!maybeAsset) return '';
+    if (typeof maybeAsset === 'string') return maybeAsset;
+    if (maybeAsset.src) return maybeAsset.src;
+    return '';
+  };
+
+  const uploadPlaceholder = getPlaceholderSrc(
+    assets?.upload_area || assets?.uploadArea || ''
+  );
+
+  // ---- load blog when editing ----
+  useEffect(() => {
+    if (!isEditMode) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchBlog = async () => {
+      try {
+        const res = await fetch(`/api/blog/getBlog?id=${editId}`);
+        if (!res.ok) throw new Error('Failed to load blog');
+        const blog = await res.json();
+
+        setFormData({
+          title: blog.title || "",
+          description: blog.description || "",
+          author: blog.author || "",
+          category: blog.category || categories[0],
+        });
+
+        setAuthorImg(blog.authorImg || null);
+        setBlogImage(blog.image || null);
+        setEditorKey((k) => k + 1);
+      } catch (err) {
+        console.error(err);
+        alert("Error loading blog for edit");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBlog();
+  }, [isEditMode, editId]);
+
+  // ---- handlers ----
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -45,78 +95,109 @@ const AddBlogpage = () => {
     if (e.target.files && e.target.files[0]) setFile(e.target.files[0]);
   };
 
-  // Editor change handler receives { json, html, readTime }
   const handleEditorChange = ({ json, html, readTime }) => {
     setFormData(prev => ({ ...prev, description: html }));
   };
 
   const resetFormFields = () => {
-    // Clear text fields
     setFormData({ title: "", description: "", author: "", category: categories[0] });
-
-    // Clear file state and native inputs
     setAuthorImg(null);
     setBlogImage(null);
     if (authorInputRef.current) authorInputRef.current.value = '';
     if (blogInputRef.current) blogInputRef.current.value = '';
-
-    // Remount editor to ensure internal state (character count, html, etc.) is cleared
     setEditorKey((k) => k + 1);
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
-      const authorImgBase64 = authorImg ? await toBase64(authorImg) : "";
-      const blogImgBase64 = blogImage ? await toBase64(blogImage) : "";
+  try {
+    const blogData = {
+      ...formData,
+      authorImg:
+        authorImg instanceof File ? await toBase64(authorImg) : authorImg || "",
+      image:
+        blogImage instanceof File ? await toBase64(blogImage) : blogImage || "",
+      date: Date.now(),
+    };
 
-      const blogData = {
-        ...formData,
-        authorImg: authorImgBase64,
-        image: blogImgBase64,
-        date: Date.now(),
-      };
-
-      const response = await fetch("/api/blog/createBlog", {
+    let response;
+    if (isEditMode) {
+      // UPDATE
+      response = await fetch(`/api/blog/updateBlog?id=${editId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(blogData),
+      });
+    } else {
+      // CREATE
+      response = await fetch("/api/blog/createBlog", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(blogData),
       });
-
-      if (response.ok) {
-        alert("Blog added successfully");
-        // clear the form & editor
-        resetFormFields();
-      } else {
-        const errorData = await response.json();
-        alert("Error: " + (errorData.error || 'Unknown error'));
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Error submitting blog: ' + (err.message || err));
     }
-  };
 
-  // small helper to trigger click on file inputs from our preview placeholders
-  const triggerFileClick = (ref) => {
-    if (ref && ref.current) ref.current.click();
-  };
+    if (!response.ok) {
+      let errorData = {};
+      try {
+        errorData = await response.json();
+      } catch {}
+      console.error("Submit error:", response.status, errorData);
+      throw new Error(errorData.error || `Request failed with ${response.status}`);
+    }
 
-  // Helper to get placeholder src (supports different import shapes)
-  const getPlaceholderSrc = (maybeAsset) => {
-    if (!maybeAsset) return '';
-    if (typeof maybeAsset === 'string') return maybeAsset;
-    if (maybeAsset.src) return maybeAsset.src;
-    return '';
-  };
+    // ✅ success: read response body and log it
+    let data = {};
+    try {
+      data = await response.json();
+    } catch {
+      data = {};
+    }
 
-  // Attempt to get upload_area from assets (adjust key if your asset name differs)
-  const uploadPlaceholder = getPlaceholderSrc(assets?.upload_area || assets?.uploadArea || '');
+    const blog = data.blog || data; // handle both shapes just in case
 
+    if (isEditMode) {
+      console.log(
+        "✏️ Client: blog updated:",
+        blog?._id || editId,
+        "-",
+        blog?.title || formData.title
+      );
+      alert("Blog updated successfully");
+    } else {
+      console.log(
+        "✅ Client: blog created:",
+        blog?._id,
+        "-",
+        blog?.title || formData.title
+      );
+      alert("Blog added successfully");
+    }
+
+    router.push("/admin/blogList");
+  } catch (err) {
+    console.error(err);
+    alert("Error submitting blog: " + err.message);
+  }
+};
+
+
+  if (loading) {
+    return (
+      <div className="max-w-[1140px] mx-auto p-6 my-10 bg-white rounded shadow-md">
+        <p>Loading blog...</p>
+      </div>
+    );
+  }
+
+  // ---- UI ----
   return (
     <div className="max-w-[1140px] mx-auto  p-6 my-10 bg-white rounded shadow-md">
-      <h1 className="text-2xl font-semibold mb-6 text-center text-gray-800">Add Blog</h1>
+      <h1 className="text-2xl font-semibold mb-6 text-center text-gray-800">
+        {isEditMode ? "Edit Blog" : "Add Blog"}
+      </h1>
+
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Title */}
         <div>
@@ -135,7 +216,7 @@ const AddBlogpage = () => {
         <div>
           <label className="block mb-1 font-medium text-gray-700">Description</label>
           <RichTextEditor
-            key={editorKey} // remounts editor when key changes
+            key={editorKey}
             initialContent={formData.description || null}
             onContentChange={handleEditorChange}
           />
@@ -173,8 +254,6 @@ const AddBlogpage = () => {
         {/* Author Image */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Author Image</label>
-
-          {/* Hidden input */}
           <input
             ref={authorInputRef}
             type="file"
@@ -183,46 +262,29 @@ const AddBlogpage = () => {
             className="hidden"
           />
 
-          {/* Preview or Upload Placeholder */}
           <div
             className="w-48 h-32 border border-gray-300 rounded-md overflow-hidden cursor-pointer"
             onClick={() => triggerFileClick(authorInputRef)}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') triggerFileClick(authorInputRef); }}
           >
             <img
-              src={authorImg ? URL.createObjectURL(authorImg) : (uploadPlaceholder || '')}
+              src={
+                authorImg
+                  ? authorImg instanceof File
+                    ? URL.createObjectURL(authorImg)
+                    : authorImg
+                  : (uploadPlaceholder || '')
+              }
               alt="Author Preview"
               className="w-full h-full object-cover"
             />
-          </div>
-
-          {/* Upload Button */}
-          <div className="mt-2 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => triggerFileClick(authorInputRef)}
-              className="inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
-            >
-              
-              Upload/change author image
-            </button>
-
-            {/* optionally show preview filename */}
-            {authorImg && (
-              <span className="text-sm text-gray-600 truncate max-w-[220px]">
-                {authorImg.name}
-              </span>
-            )}
           </div>
         </div>
 
         {/* Blog Image */}
         <div>
           <label className="block mb-1 font-medium text-gray-700">Blog Image</label>
-
-          {/* Hidden input */}
           <input
             ref={blogInputRef}
             type="file"
@@ -231,43 +293,43 @@ const AddBlogpage = () => {
             className="hidden"
           />
 
-          {/* Preview or Upload Placeholder */}
           <div
             className="w-48 h-28 border border-gray-300 rounded-md overflow-hidden cursor-pointer"
             onClick={() => triggerFileClick(blogInputRef)}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') triggerFileClick(blogInputRef); }}
           >
             <img
-              src={blogImage ? URL.createObjectURL(blogImage) : (uploadPlaceholder || '')}
+              src={
+                blogImage
+                  ? blogImage instanceof File
+                    ? URL.createObjectURL(blogImage)
+                    : blogImage
+                  : (uploadPlaceholder || '')
+              }
               alt="Blog Preview"
               className="w-full h-full object-cover"
             />
           </div>
-
-          <div className="mt-2 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => triggerFileClick(blogInputRef)}
-              className="inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
-            >
-              
-              Upload/change blog image
-            </button>
-
-            {blogImage && (
-              <span className="text-sm text-gray-600 truncate max-w-[220px]">
-                {blogImage.name}
-              </span>
-            )}
-          </div>
         </div>
 
-        {/* Submit */}
-        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded transition-colors">
-          Add Blog
-        </button>
+        {/* Buttons */}
+        <div className="flex justify-end gap-4 pt-4">
+          <button
+            type="button"
+            onClick={() => router.push('/admin/blogList')}
+            className="px-5 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded transition-colors"
+          >
+            {isEditMode ? "Update Blog" : "Add Blog"}
+          </button>
+        </div>
       </form>
     </div>
   );

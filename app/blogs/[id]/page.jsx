@@ -47,11 +47,12 @@ export default function BlogDetailPage() {
           <img src={data.image} alt='Blog' width={1280} height={520} className='border-4 border-white mx-auto ' />
         )}
         <BlogContent html={data.description} />
-      </div>
+      
       <div className='flex my-10 px-2'>
                   <Image src={assets.facebook_icon} alt='' width={40} />
                   <Image src={assets.twitter_icon} alt='' width={40} />
                   <Image src={assets.googleplus_icon} alt='' width={40} />
+              </div>
               </div>
     </>
   );

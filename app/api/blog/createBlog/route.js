@@ -4,10 +4,24 @@ import { Blog } from "@/lib/models/BlogModel";
 
 // Handles POST requests to /api/blog/createBlog
 export async function POST(request) {
-  await ConnectDB();
-  const body = await request.json();
+  try {
+    await ConnectDB();
 
-  const blogDoc = new Blog(body);
-  await blogDoc.save();
-  return NextResponse.json({ message: "Blog saved", blog: blogDoc }, { status: 201 });
+    const body = await request.json();
+    const blogDoc = new Blog(body);
+    await blogDoc.save();
+
+    console.log("✅ createBlog: blog created:", blogDoc._id.toString(), "-", blogDoc.title);
+
+    return NextResponse.json(
+      { message: "Blog saved", blog: blogDoc },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("❌ createBlog error:", error);
+    return NextResponse.json(
+      { error: error.message || "Internal server error" },
+      { status: 500 }
+    );
+  }
 }

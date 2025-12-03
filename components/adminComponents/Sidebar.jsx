@@ -49,7 +49,7 @@ const Sidebar = () => {
       {/* Mobile / tablet – only logo in top bar */}
       <div className="lg:hidden w-full border-b border-black">
         <div className="flex items-center px-3 sm:px-4 py-2 bg-slate-100">
-          <Link href="/" className="flex-shrink-0">
+          <Link href="/" className="shrink-0">
             <Image src={assets.logo} width={110} alt="Blogger logo" />
           </Link>
         </div>

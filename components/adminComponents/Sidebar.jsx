@@ -3,9 +3,27 @@
 import { assets } from "@/assets/blog-img/assets";
 import Image from "next/image";
 import Link from "next/link";
-import React from "react";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 
 const Sidebar = () => {
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+    } catch (err) {
+      console.error("Logout error", err);
+    } finally {
+      setLoggingOut(false);
+      router.push("/login"); // go to login page
+    }
+  };
+
   return (
     <div className="bg-slate-100 text-sm">
       {/* Desktop / large screens – vertical sidebar */}
@@ -13,7 +31,7 @@ const Sidebar = () => {
         {/* Logo */}
         <Link
           href="/"
-          className="px-6 py-3 border-b border-black flex items-center"
+          className="px-6 py-3 active:bg-gray-100 border-b border-black flex items-center"
         >
           <Image src={assets.logo} width={130} alt="Blogger logo" />
         </Link>
@@ -22,7 +40,7 @@ const Sidebar = () => {
         <div className="flex-1 px-4 pt-6 space-y-4">
           <Link
             href="/admin/addBlog"
-            className="flex items-center border border-black gap-3 font-medium px-3 py-2 bg-white shadow-[-5px_5px_0px_#000000]"
+            className="flex items-center active:bg-gray-100 border border-black gap-3 font-medium px-3 py-2 bg-white shadow-[-5px_5px_0px_#000000]"
           >
             <Image src={assets.add_icon} alt="" width={24} />
             <p>Add Blogs</p>
@@ -30,7 +48,7 @@ const Sidebar = () => {
 
           <Link
             href="/admin/blogList"
-            className="flex items-center border border-black gap-3 font-medium px-3 py-2 bg-white shadow-[-5px_5px_0px_#000000]"
+            className="flex items-center active:bg-gray-100 border border-black gap-3 font-medium px-3 py-2 bg-white shadow-[-5px_5px_0px_#000000]"
           >
             <Image src={assets.blog_icon} alt="" width={24} />
             <p>Blog list</p>
@@ -38,12 +56,28 @@ const Sidebar = () => {
 
           <Link
             href="/admin/subscription"
-            className="flex items-center border border-black gap-3 font-medium px-3 py-2 bg-white shadow-[-5px_5px_0px_#000000]"
+            className="flex items-center active:bg-gray-100 border border-black gap-3 font-medium px-3 py-2 bg-white shadow-[-5px_5px_0px_#000000]"
           >
             <Image src={assets.email_icon} alt="" width={24} />
             <p>Subscription</p>
           </Link>
+
+          {/* Logout button – under Subscription */}
+        <div className="px-0 pb-6">
+          
+          <button
+            onClick={handleLogout}
+            className="w-full cursor-pointer  flex items-start justify-start border border-black gap-2 font-medium px-3 py-2 bg-white shadow-[-5px_5px_0px_#000000]"
+          >
+
+            <Image src={assets.Logout} alt="" width={24} />
+            {/* you can add a logout icon from assets if you have one */}
+            <span>{loggingOut ? "Logging out..." : "Logout"}</span>
+          </button>
         </div>
+        </div>
+
+        
       </div>
 
       {/* Mobile / tablet – only logo in top bar */}

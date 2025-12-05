@@ -2,9 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
-import { assets } from "@/assets/blog-img/assets";
 import { MobileAdminNav } from "@/components/adminComponents/Sidebar";
 
 const BlogListPage = () => {
@@ -37,6 +34,7 @@ const BlogListPage = () => {
   const handleDelete = async (id) => {
     const ok = confirm("Are you sure you want to delete this blog?");
     if (!ok) return;
+
     const prev = blogs;
     setBlogs((b) => b.filter((x) => x._id !== id));
 
@@ -65,22 +63,23 @@ const BlogListPage = () => {
   };
 
   return (
-    <div className="py-6 sm:py-8 px-3 sm:px-4">
-      <div className="max-w-[1240px] mx-auto">
+    <div className="py-6 sm:py-8 px-3 sm:px-4 overflow-x-hidden">
+      <div className="w-full max-w-[1240px] mx-auto flex flex-col gap-6 sm:gap-8">
         <h1 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">
           All blogs
         </h1>
 
-        {/* Mobile tabs nav (scrollable) */}
         <MobileAdminNav active="blogList" />
 
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-          {/* horizontal scroll on small screens */}
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-xs sm:text-sm table-auto">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-[960px] text-xs sm:text-sm table-auto">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left px-4 sm:px-6 py-3 sm:py-4 font-medium text-gray-500 uppercase tracking-wider">
+                  {/* Sticky Author column header */}
+                  <th
+                    className="sticky left-0 z-20 bg-gray-50 text-left px-4 sm:px-6 py-3 sm:py-4 font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Author name
                   </th>
                   <th className="text-left px-4 sm:px-6 py-3 sm:py-4 font-medium text-gray-500 uppercase tracking-wider">
@@ -124,8 +123,8 @@ const BlogListPage = () => {
                       key={blog._id}
                       className="hover:bg-gray-50 border-t align-top"
                     >
-                      {/* Author */}
-                      <td className="px-4 sm:px-6 py-4">
+                      {/* Sticky Author column cell */}
+                      <td className="sticky left-0 bg-white z-10 px-4 sm:px-6 py-4">
                         <div className="flex items-center gap-3 sm:gap-4">
                           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-gray-100 shrink-0">
                             {blog.authorImg ? (

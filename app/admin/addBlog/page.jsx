@@ -195,9 +195,11 @@ const AddBlogpage = () => {
   // ---- UI ----
   return (
     <div className='md:px-10'>
-      
+       <div className='pt-5'>
+        <MobileAdminNav/>
+       </div>
     <div className="max-w-[1140px] mx-auto p-3  md:p-6 mb-10 md:my-10 bg-white rounded shadow-md ">
-      <MobileAdminNav/>
+     
       <h1 className="text-2xl font-semibold mb-6 text-center text-gray-800">
         {isEditMode ? "Edit Blog" : "Add Blog"}
       </h1>

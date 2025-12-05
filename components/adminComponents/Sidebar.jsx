@@ -1,10 +1,10 @@
 "use client";
 
-import { assets } from "@/assets/blog-img/assets";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { assets } from "@/assets/blog-img/assets";
 
 const Sidebar = () => {
   const router = useRouter();
@@ -27,7 +27,7 @@ const Sidebar = () => {
   return (
     <div className="bg-slate-100 text-sm">
       {/* Desktop / large screens – vertical sidebar */}
-      <div className="hidden lg:flex lg:flex-col lg:h-screen lg:w-64 xl:w-80 border-r border-black">
+      <div className="hidden xl:flex xl:flex-col xl:h-screen xl:w-80 border-r border-black">
         {/* Logo */}
         <Link
           href="/"
@@ -62,22 +62,22 @@ const Sidebar = () => {
             <p>Subscription</p>
           </Link>
 
-          {/* Logout button – under Subscription */}
-        <div className="px-0 pb-6">
-          
-          <button
-            onClick={handleLogout}
-            className="w-full cursor-pointer  flex items-start justify-start border border-black gap-2 font-medium px-3 py-2 bg-white shadow-[-5px_5px_0px_#000000]"
-          >
-
-            <Image src={assets.Logout} alt="" width={24} />
-            {/* you can add a logout icon from assets if you have one */}
-            <span>{loggingOut ? "Logging out..." : "Logout"}</span>
-          </button>
+          {/* Logout button */}
+          <div className="pb-6">
+            <button
+              onClick={handleLogout}
+              className="w-full cursor-pointer flex items-start justify-start border border-black gap-2 font-medium px-3 py-2 bg-white shadow-[-5px_5px_0px_#000000]"
+            >
+              <Image
+                src={assets.logout_icon}
+                alt="logout_icon"
+                width={24}
+                height={24}
+              />
+              <span>{loggingOut ? "Logging out..." : "Logout"}</span>
+            </button>
+          </div>
         </div>
-        </div>
-
-        
       </div>
 
       {/* Mobile / tablet – only logo in top bar */}
@@ -94,6 +94,23 @@ const Sidebar = () => {
 
 /* Mobile “tabs” nav – to be used inside pages */
 export const MobileAdminNav = ({ active = "blogList" }) => {
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+    } catch (err) {
+      console.error("Logout error", err);
+    } finally {
+      setLoggingOut(false);
+      router.push("/login");
+    }
+  };
+
   const baseClasses =
     "flex items-center gap-2 px-3 py-1.5 text-xs sm:text-sm border border-black shadow-[-4px_4px_0px_#000000] whitespace-nowrap";
 
@@ -103,7 +120,7 @@ export const MobileAdminNav = ({ active = "blogList" }) => {
       : baseClasses + " bg-white";
 
   return (
-    <div className="mb-5 overflow-x-auto py-4 lg:hidden">
+    <div className="mb-5 overflow-x-auto py-4 xl:hidden">
       <div className="flex flex-nowrap gap-3 w-max px-1 sm:px-0">
         <Link href="/admin/addBlog" className={isActive("addBlog")}>
           <Image src={assets.add_icon} alt="" width={18} />
@@ -119,6 +136,20 @@ export const MobileAdminNav = ({ active = "blogList" }) => {
           <Image src={assets.email_icon} alt="" width={18} />
           <span>Subscription</span>
         </Link>
+
+        {/* Logout button – mobile tab */}
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-3 py-1.5 border border-black bg-white shadow-[-4px_4px_0px_#000000]"
+        >
+          <Image
+            src={assets.logout_icon}
+            alt="logout_icon"
+            width={18}
+            height={18}
+          />
+          <span>{loggingOut ? "Logging out..." : "Logout"}</span>
+        </button>
       </div>
     </div>
   );
